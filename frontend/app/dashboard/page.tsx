@@ -71,7 +71,7 @@ export default function DashboardPage() {
             const user = JSON.parse(userStr)
             if (!user.email) { setLoading(false); return }
 
-            fetch(`/django-api/dashboard/?email=${encodeURIComponent(user.email)}`)
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/?email=${encodeURIComponent(user.email)}`)
                 .then(res => {
                     if (res.status === 404) {
                         // User not found in DB - clear local storage and redirect to auth
@@ -96,7 +96,7 @@ export default function DashboardPage() {
         if (!userStr) return
         try {
             const user = JSON.parse(userStr)
-            fetch("/django-api/mood/", {
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/mood/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: user.email, mood: idx }),

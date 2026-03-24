@@ -92,7 +92,7 @@ function AuthContent() {
         if (Object.keys(errors).length === 0) {
             setSigninLoading(true)
             try {
-                const res = await fetch("/django-api/auth/login", {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username: signinEmail, password: signinPassword }),
@@ -146,7 +146,7 @@ function AuthContent() {
         if (Object.keys(errors).length === 0) {
             setSignupLoading(true)
             try {
-                const res = await fetch("/django-api/auth/register", {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
