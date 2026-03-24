@@ -1,6 +1,5 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Analytics } from "@vercel/analytics/next"
 import { SmoothScroll } from "@/components/ui/smooth-scroll"
 import "./globals.css"
 
@@ -51,7 +50,6 @@ export default function RootLayout({
       >
         <div className="noise-overlay" aria-hidden="true" />
         <SmoothScroll>{children}</SmoothScroll>
-        <Analytics />
       </body>
     </html>
   )

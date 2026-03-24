@@ -20,6 +20,9 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['@radix-ui/react-*'],
   },
+  turbopack: {
+    root: __dirname,
+  },
 }
 
 export default nextConfig

@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db import models as db_models
 from django.http import StreamingHttpResponse, HttpResponse
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -18,6 +19,7 @@ def home(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def register_user(request):
     # Transform incoming frontend data into the nested structure DRF expects
     data = {
@@ -33,12 +35,21 @@ def register_user(request):
     
     serializer = UserSerializer(data=data)
     if serializer.is_valid():
-        serializer.save()
-        return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
+        user = serializer.save()
+        profile = getattr(user, 'profile', None)
+        return Response({
+            "message": "User created successfully",
+            "username": user.username,
+            "email": user.email,
+            "firstName": profile.first_name if profile else "",
+            "lastName": profile.last_name if profile else "",
+            "membership": profile.membership if profile else "free",
+        }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def login_user(request):
     username = request.data.get('username')
     password = request.data.get('password')
@@ -72,35 +83,49 @@ def dashboard_data(request):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    subjects = user.subjects.all()
-    activities = user.activities.all()[:10]
-    latest_mood = user.moods.first()  # already ordered by -created_at
+    try:
+        subjects = user.subjects.all().order_by('-updated_at')
+        activities = user.activities.all().order_by('-created_at')[:10]
+        latest_mood = user.moods.first() if hasattr(user, 'moods') else None
 
-    # Calculate overall progress as average of all subjects
-    overall_progress = 0
-    if subjects.exists():
-        overall_progress = int(subjects.aggregate(avg=db_models.Avg('progress'))['avg'])
+        # Calculate overall progress as average of all subjects
+        overall_progress = 0
+        if subjects.exists():
+            overall_progress = int(subjects.aggregate(avg=db_models.Avg('progress'))['avg'] or 0)
 
-    # Continue subject = most recently updated
-    continue_subject = subjects.first()  # already ordered by -updated_at
+        # Continue subject = most recently updated
+        continue_subject = subjects.first() if subjects.exists() else None
 
-    profile = getattr(user, 'profile', None)
+        profile = getattr(user, 'profile', None)
+        
+        # Safe membership display
+        membership = "Free Member"
+        if profile:
+            try:
+                membership = profile.get_membership_display() if hasattr(profile, 'get_membership_display') else profile.membership
+            except:
+                membership = getattr(profile, 'membership', 'Free Member')
 
-    return Response({
-        "subjects": SubjectSerializer(subjects, many=True).data,
-        "activities": ActivitySerializer(activities, many=True).data,
-        "latest_mood": MoodEntrySerializer(latest_mood).data if latest_mood else None,
-        "overall_progress": overall_progress,
-        "user_name": f"{profile.first_name} {profile.last_name}" if profile else user.username,
-        "membership": profile.get_membership_display() if profile else "Free Member",
-        "continue_subject": SubjectSerializer(continue_subject).data if continue_subject else None,
-    })
+        return Response({
+            "subjects": SubjectSerializer(subjects, many=True).data,
+            "activities": ActivitySerializer(activities, many=True).data,
+            "latest_mood": MoodEntrySerializer(latest_mood).data if latest_mood else None,
+            "overall_progress": overall_progress,
+            "user_name": f"{profile.first_name} {profile.last_name}" if profile else user.username,
+            "membership": membership,
+            "continue_subject": SubjectSerializer(continue_subject).data if continue_subject else None,
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ─── Mood ───
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def save_mood(request):
     email = request.data.get('email')
     mood = request.data.get('mood')
@@ -121,6 +146,7 @@ def save_mood(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def create_or_update_subject(request):
     email = request.data.get('email')
     name = request.data.get('name')
@@ -174,6 +200,7 @@ def create_or_update_subject(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def track_activity(request):
     email = request.data.get('email')
     activity_type = request.data.get('activity_type', 'ai_tutor_session')
@@ -287,6 +314,7 @@ def get_conversation(request, conv_id):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def new_conversation(request):
     email = request.data.get('email')
     bot_type = request.data.get('bot_type', 'tutor')
@@ -306,6 +334,7 @@ def new_conversation(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def chat_stream(request):
     email = request.data.get('email')
     question = request.data.get('question', '').strip()
@@ -386,6 +415,7 @@ def chat_stream(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def mental_health_stream(request):
     email = request.data.get('email')
     message = request.data.get('message', '').strip()
@@ -471,6 +501,7 @@ def delete_conversation(request, conv_id):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def submit_feedback(request):
     conv_id = request.data.get('conversation_id')
     rating = request.data.get('rating')

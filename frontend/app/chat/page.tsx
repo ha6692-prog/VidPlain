@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
-import { AnimatedNoise } from "@/components/ui/animated-noise"
 import { BitmapChevron } from "@/components/ui/bitmap-chevron"
 import { AIResponseContent } from "@/components/ui/ai-response-content"
 
@@ -78,7 +77,7 @@ export default function ChatPage() {
     const loadConversations = useCallback(() => {
         const email = getUserEmail()
         if (!email) return
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/conversations?email=${encodeURIComponent(email)}&bot_type=tutor`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations?email=${encodeURIComponent(email)}&bot_type=tutor`)
             .then(r => r.json())
             .then(d => { if (Array.isArray(d)) setConversations(d) })
             .catch(() => { })
@@ -88,7 +87,7 @@ export default function ChatPage() {
     useEffect(() => {
         const email = getUserEmail()
         if (!email) return
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard?email=${encodeURIComponent(email)}`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard?email=${encodeURIComponent(email)}`)
             .then(res => res.json())
             .then(data => {
                 if (data.subjects) setSubjects(data.subjects)
@@ -109,7 +108,7 @@ export default function ChatPage() {
         const email = getUserEmail()
         if (!email || !subjectName) return
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/track-activity`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/track-activity`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -124,7 +123,7 @@ export default function ChatPage() {
         const email = getUserEmail()
         if (!email || !subjectName) return
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/subjects`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subjects`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, name: subjectName }),
@@ -194,7 +193,7 @@ export default function ChatPage() {
         const controller = new AbortController()
         abortRef.current = controller
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/stream`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/stream`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -299,8 +298,6 @@ export default function ChatPage() {
 
     return (
         <div className="flex h-screen bg-background text-foreground selection:bg-accent/30 font-sans overflow-hidden">
-            <AnimatedNoise />
-
             {/* Sidebar */}
             <div className="w-80 border-r border-border bg-secondary/10 flex flex-col hidden md:flex z-10 h-full">
                 <div className="p-6 border-b border-border">

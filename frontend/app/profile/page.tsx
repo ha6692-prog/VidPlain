@@ -17,7 +17,7 @@ export default function ProfilePage() {
                 const user = JSON.parse(userStr)
                 if (user.email) {
                     setUserEmail(user.email)
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/learning-progress/?email=${encodeURIComponent(user.email)}`)
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/learning-progress/?email=${encodeURIComponent(user.email)}`)
                         .then(res => res.json())
                         .then(data => {
                             if (data.success !== false) {

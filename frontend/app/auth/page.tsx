@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { AnimatedNoise } from "@/components/ui/animated-noise"
 
 function isValidEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -33,6 +32,7 @@ export default function AuthPage() {
 
 function AuthContent() {
     const searchParams = useSearchParams()
+    const router = useRouter()
     const [mode, setMode] = useState<"signin" | "signup">("signin")
 
     // Sign in state
@@ -92,25 +92,35 @@ function AuthContent() {
         if (Object.keys(errors).length === 0) {
             setSigninLoading(true)
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username: signinEmail, password: signinPassword }),
                 })
                 const data = await res.json()
-                if (res.ok) {
-                    localStorage.setItem("user", JSON.stringify({
-                        email: data.email,
-                        username: data.username,
-                        firstName: data.firstName,
-                        lastName: data.lastName,
-                        membership: data.membership,
-                    }))
-                    window.location.href = "/dashboard"
+                console.log("Login response:", res.status, data)
+
+                if (res.ok && data.email) {
+                    const userData = {
+                        email: data.email || signinEmail,
+                        username: data.username || signinEmail,
+                        firstName: data.firstName || "",
+                        lastName: data.lastName || "",
+                        membership: data.membership || "free",
+                    }
+                    console.log("Storing user data:", userData)
+                    localStorage.setItem("user", JSON.stringify(userData))
+
+                    // Use Next.js router for proper navigation
+                    console.log("Redirecting to dashboard...")
+                    router.push("/dashboard")
                 } else {
-                    setSigninErrors({ email: data.error || "Invalid credentials" })
+                    const errorMsg = data?.error || data?.message || "Invalid credentials"
+                    console.error("Login failed:", errorMsg, data)
+                    setSigninErrors({ email: errorMsg })
                 }
-            } catch {
+            } catch (err) {
+                console.error("Sign in error:", err)
                 setSigninErrors({ email: "Network error. Is the server running?" })
             } finally {
                 setSigninLoading(false)
@@ -146,7 +156,7 @@ function AuthContent() {
         if (Object.keys(errors).length === 0) {
             setSignupLoading(true)
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -167,7 +177,8 @@ function AuthContent() {
                         lastName,
                         membership: "free",
                     }))
-                    window.location.href = "/dashboard"
+                    console.log("Registration successful, redirecting to dashboard...")
+                    router.push("/dashboard")
                 } else {
                     const errMsg = typeof data === "object"
                         ? Object.values(data).flat().join(", ")
@@ -186,7 +197,6 @@ function AuthContent() {
 
     return (
         <main className="relative min-h-screen flex items-center justify-center">
-            <AnimatedNoise opacity={0.03} />
             <div className="grid-bg fixed inset-0 opacity-30" aria-hidden="true" />
 
             {/* Logo */}

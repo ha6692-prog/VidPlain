@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowRight, ArrowDownLeft } from "lucide-react"
 
 interface SubjectData {
@@ -55,6 +56,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DashboardPage() {
+    const router = useRouter()
     const [activeMood, setActiveMood] = useState<number | null>(null)
     const [data, setData] = useState<DashboardData | null>(null)
     const [loading, setLoading] = useState(true)
@@ -64,30 +66,71 @@ export default function DashboardPage() {
     useEffect(() => {
         const userStr = localStorage.getItem("user")
         if (!userStr) {
+            console.log("No user data found in localStorage, redirecting to auth")
             setLoading(false)
+            router.push("/auth")
             return
         }
         try {
             const user = JSON.parse(userStr)
-            if (!user.email) { setLoading(false); return }
+            if (!user.email) {
+                console.log("User email missing, redirecting to auth")
+                setLoading(false)
+                router.push("/auth")
+                return
+            }
 
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/?email=${encodeURIComponent(user.email)}`)
+            console.log("Fetching dashboard data for:", user.email)
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/?email=${encodeURIComponent(user.email)}`)
                 .then(res => {
-                    if (res.status === 404) {
-                        // User not found in DB - clear local storage and redirect to auth
-                        localStorage.removeItem("user")
-                        window.location.href = "/auth"
-                        throw new Error("User not found")
+                    console.log("Dashboard response status:", res.status)
+                    if (!res.ok) {
+                        if (res.status === 404) {
+                            // User just logged in, backend data might not be created yet
+                            // Silently return default empty state
+                            console.log("User profile not yet created in backend, showing empty dashboard")
+                            return {
+                                subjects: [],
+                                activities: [],
+                                latest_mood: null,
+                                overall_progress: 0,
+                                user_name: user.firstName ? `${user.firstName} ${user.lastName}`.trim() : "User",
+                                membership: user.membership || "Free Member",
+                                continue_subject: null,
+                            } as DashboardData
+                        }
+                        throw new Error(`Dashboard fetch failed: ${res.status}`)
                     }
                     return res.json()
                 })
                 .then((d: DashboardData) => {
+                    console.log("Dashboard data loaded successfully")
                     setData(d)
-                    if (d.latest_mood !== null) setActiveMood(d.latest_mood.mood)
+                    if (d.latest_mood !== null && d.latest_mood !== undefined) {
+                        setActiveMood(d.latest_mood.mood)
+                    }
                 })
-                .catch(err => console.error("Dashboard fetch error:", err))
+                .catch(err => {
+                    // Only log actual fetch errors, not the 404 case
+                    if (err.status !== 404) {
+                        console.error("Dashboard fetch error:", err)
+                    }
+                    // Set default state as fallback
+                    setData({
+                        subjects: [],
+                        activities: [],
+                        latest_mood: null,
+                        overall_progress: 0,
+                        user_name: user.firstName ? `${user.firstName} ${user.lastName}`.trim() : "User",
+                        membership: user.membership || "Free Member",
+                        continue_subject: null,
+                    })
+                })
                 .finally(() => setLoading(false))
-        } catch { setLoading(false) }
+        } catch (err) {
+            console.error("Dashboard useEffect error:", err)
+            setLoading(false)
+        }
     }, [])
 
     const handleMoodSelect = (idx: number) => {
@@ -96,7 +139,7 @@ export default function DashboardPage() {
         if (!userStr) return
         try {
             const user = JSON.parse(userStr)
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/mood/`, {
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/mood/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: user.email, mood: idx }),

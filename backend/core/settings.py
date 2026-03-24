@@ -34,7 +34,7 @@ GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile').strip().str
 SECRET_KEY = 'django-insecure-fro)=70v8q3sw%y&t#akk*7$_0c-s2)8cjsrw=+#5#mxxf048*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -136,6 +136,5 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Allow Next.js frontend to access Django backend
 CORS_ALLOW_ALL_ORIGINS = True
 
-
-# Disable trailing slash redirect — frontend proxy strips slashes, causing 500 on POST
-APPEND_SLASH = False
+# Enable trailing slash to handle both /api/endpoint and /api/endpoint/
+APPEND_SLASH = True
