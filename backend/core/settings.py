@@ -139,11 +139,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 CSRF_TRUSTED_ORIGINS = [
     "https://vid-plain-uvqy.vercel.app",
+    "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
     "http://localhost:3000",  # For local development
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "https://vid-plain-uvqy.vercel.app",
+    "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
     "http://localhost:3000",  # For local development
 ]
 
