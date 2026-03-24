@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import models as db_models
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, HttpResponse
 from django.conf import settings
 from rest_framework import status
 from rest_framework.response import Response
@@ -13,6 +13,8 @@ from .prompt_builder import prompt_builder, UserContext
 from .mental_health_prompt_builder import build_mano_messages
 import json
 
+def home(request):
+    return HttpResponse("Vidplain API working 🚀")
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
