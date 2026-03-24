@@ -76,11 +76,24 @@ export default function ChatPage() {
 
     const loadConversations = useCallback(() => {
         const email = getUserEmail()
-        if (!email) return
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations/?email=${encodeURIComponent(email)}&bot_type=tutor`)
-            .then(r => r.json())
-            .then(d => { if (Array.isArray(d)) setConversations(d) })
-            .catch(() => { })
+        if (!email) {
+            console.log("loadConversations: no email found")
+            return
+        }
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/conversations/?email=${encodeURIComponent(email)}&bot_type=tutor`
+        console.log("loadConversations: fetching from", url)
+        fetch(url)
+            .then(r => {
+                console.log("loadConversations: response status", r.status)
+                return r.json()
+            })
+            .then(d => {
+                console.log("loadConversations: data received", d)
+                if (Array.isArray(d)) setConversations(d)
+            })
+            .catch(err => {
+                console.error("loadConversations: error", err)
+            })
     }, [])
 
     // Load subjects & conversations
@@ -255,8 +268,13 @@ export default function ChatPage() {
 
                         if (payload.done) {
                             doneFromServer = true
+                            console.log("Stream done. Received payload:", payload)
                             if (payload.conversation_id) {
+                                console.log("Setting conversation ID:", payload.conversation_id)
                                 setConversationId(payload.conversation_id)
+                                loadConversations()  // Reload list after saving
+                            } else {
+                                console.warn("No conversation_id in done payload")
                             }
                         }
                     }
