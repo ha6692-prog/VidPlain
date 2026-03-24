@@ -6,7 +6,7 @@
 
 /* Custom editorial design tokens - monochrome with orange accent */
 :root {
-  --background: oklch(0.14 0 0);
+  --background: oklch(0.09 0 0);
   --foreground: oklch(0.95 0 0);
   --card: oklch(0.12 0 0);
   --card-foreground: oklch(0.95 0 0);
