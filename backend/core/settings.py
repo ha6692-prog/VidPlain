@@ -133,8 +133,19 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Allow Next.js frontend to access Django backend
-CORS_ALLOW_ALL_ORIGINS = True
+# CSRF & CORS Configuration for cross-domain requests
+# Frontend: https://vid-plain-uvqy.vercel.app (Vercel)
+# Backend: https://vidplain-backend...azurewebsites.net (Azure)
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://vid-plain-uvqy.vercel.app",
+    "http://localhost:3000",  # For local development
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "https://vid-plain-uvqy.vercel.app",
+    "http://localhost:3000",  # For local development
+]
 
 # Enable trailing slash to handle both /api/endpoint and /api/endpoint/
 APPEND_SLASH = True
