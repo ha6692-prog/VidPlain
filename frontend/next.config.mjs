@@ -17,6 +17,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    optimizePackageImports: ['@radix-ui/react-*'],
+  },
 }
 
 export default nextConfig
