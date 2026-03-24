@@ -144,11 +144,26 @@ def save_mood(request):
 
 # ─── Subjects ───
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 @csrf_exempt
 def create_or_update_subject(request):
-    email = request.data.get('email')
+    email = request.query_params.get('email') if request.method == 'GET' else request.data.get('email')
+    
+    # Handle GET: retrieve all subjects for a user
+    if request.method == 'GET':
+        if not email:
+            return Response({"error": "email required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        subjects = Subject.objects.filter(user=user)
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data)
+    
+    # Handle POST: create or update subject
     name = request.data.get('name')
 
     if not email or not name:
