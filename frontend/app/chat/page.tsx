@@ -77,7 +77,7 @@ export default function ChatPage() {
     const loadConversations = useCallback(() => {
         const email = getUserEmail()
         if (!email) return
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations?email=${encodeURIComponent(email)}&bot_type=tutor`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations/?email=${encodeURIComponent(email)}&bot_type=tutor`)
             .then(r => r.json())
             .then(d => { if (Array.isArray(d)) setConversations(d) })
             .catch(() => { })
@@ -87,7 +87,7 @@ export default function ChatPage() {
     useEffect(() => {
         const email = getUserEmail()
         if (!email) return
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard?email=${encodeURIComponent(email)}`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/?email=${encodeURIComponent(email)}`)
             .then(res => res.json())
             .then(data => {
                 if (data.subjects) setSubjects(data.subjects)
@@ -108,7 +108,7 @@ export default function ChatPage() {
         const email = getUserEmail()
         if (!email || !subjectName) return
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/track-activity`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/track-activity/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -123,7 +123,7 @@ export default function ChatPage() {
         const email = getUserEmail()
         if (!email || !subjectName) return
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subjects`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/subjects/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, name: subjectName }),
@@ -193,7 +193,7 @@ export default function ChatPage() {
         const controller = new AbortController()
         abortRef.current = controller
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/stream`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/stream/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

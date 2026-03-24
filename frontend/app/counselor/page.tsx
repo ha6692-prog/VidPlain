@@ -60,7 +60,7 @@ export default function CounselorPage() {
     const loadConversations = useCallback(() => {
         const email = getUserEmail()
         if (!email) return
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations?email=${encodeURIComponent(email)}&bot_type=mental_health`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations/?email=${encodeURIComponent(email)}&bot_type=mental_health`)
             .then((r) => r.json())
             .then((d) => {
                 if (Array.isArray(d)) setConversations(d)
@@ -82,7 +82,7 @@ export default function CounselorPage() {
     }
 
     const loadConversation = (id: number) => {
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations/${id}`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations/${id}/`)
             .then((r) => r.json())
             .then((d) => {
                 const mapped: Message[] = (d.messages || []).map((m: { role: string; content: string }) => ({
@@ -114,7 +114,7 @@ export default function CounselorPage() {
         const controller = new AbortController()
         abortRef.current = controller
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/mental-health/stream`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/mental-health/stream/`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
