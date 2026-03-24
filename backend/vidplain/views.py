@@ -73,6 +73,7 @@ def login_user(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def dashboard_data(request):
     email = request.query_params.get('email')
     if not email:
@@ -289,6 +290,7 @@ def _format_groq_error(exc: Exception) -> str:
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def list_conversations(request):
     email = request.query_params.get('email')
     bot_type = request.query_params.get('bot_type', 'tutor')
@@ -308,6 +310,7 @@ def list_conversations(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def get_conversation(request, conv_id):
     try:
         conv = Conversation.objects.get(id=conv_id)
