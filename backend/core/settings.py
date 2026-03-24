@@ -36,7 +36,11 @@ SECRET_KEY = 'django-insecure-fro)=70v8q3sw%y&t#akk*7$_0c-s2)8cjsrw=+#5#mxxf048*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    "vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
@@ -137,9 +141,11 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Frontend: https://vid-plain-uvqy.vercel.app (Vercel)
 # Backend: https://vidplain-backend...azurewebsites.net (Azure)
 
+
+# CSRF trusted origins (backend domain first, all with scheme)
 CSRF_TRUSTED_ORIGINS = [
-    "https://vid-plain-uvqy.vercel.app",
     "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
+    "https://vid-plain-uvqy.vercel.app",
     "http://localhost:3000",  # For local development
 ]
 
