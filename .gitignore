@@ -37,4 +37,4 @@ __pycache__/
 *.py[cod]
 
 # django
-backend/db.sqlite3
+db.sqlite3

@@ -36,7 +36,7 @@ SECRET_KEY = 'django-insecure-fro)=70v8q3sw%y&t#akk*7$_0c-s2)8cjsrw=+#5#mxxf048*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -133,25 +133,30 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# CSRF & CORS Configuration for cross-domain requests
-# Frontend: https://vid-plain-uvqy.vercel.app (Vercel)
-# Backend: https://vidplain-backend...azurewebsites.net (Azure)
+# Cross-domain frontend configuration
+FRONTEND_URL = os.environ.get(
+    'FRONTEND_URL',
+    'https://vid-plain-uvqy.vercel.app',
+).strip().rstrip('/')
+
+LOCAL_FRONTEND_URL = 'http://localhost:3000'
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://vid-plain-uvqy.vercel.app",
-    "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
-    "http://localhost:3000",  # For local development
+    FRONTEND_URL,
+    LOCAL_FRONTEND_URL,
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "https://vid-plain-uvqy.vercel.app",
-    "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
-    "http://localhost:3000",  # For local development
+    FRONTEND_URL,
+    LOCAL_FRONTEND_URL,
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Secure cookie settings for HTTPS (production)
+# Temporary testing switch. Set CORS_ALLOW_ALL_ORIGINS=True in backend .env only while debugging.
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+
+# Secure cookie settings for HTTPS (production / cross-domain)
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 
