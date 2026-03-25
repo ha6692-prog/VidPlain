@@ -36,7 +36,12 @@ SECRET_KEY = 'django-insecure-fro)=70v8q3sw%y&t#akk*7$_0c-s2)8cjsrw=+#5#mxxf048*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    "vidplain-2.onrender.com",
+    "vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
@@ -54,9 +59,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -142,25 +147,30 @@ FRONTEND_URL = os.environ.get(
 LOCAL_FRONTEND_URL = 'http://localhost:3000'
 
 
-
 CSRF_TRUSTED_ORIGINS = [
-    "https://vidplain-xi.vercel.app"
+    "https://vidplain-2.onrender.com",
+    "https://vidplain-xi.vercel.app",
+    "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
+    "http://localhost:3000",
 ]
-
 
 
 CORS_ALLOWED_ORIGINS = [
-    "https://vidplain-xi.vercel.app"
+    "https://vidplain-xi.vercel.app",
+    "https://vidplain-2.onrender.com",
+    "http://localhost:3000",
 ]
-
 
 CORS_ALLOW_CREDENTIALS = True
 
-# ⚡ QUICK TEMP FIX (for testing only)
-CORS_ALLOW_ALL_ORIGINS = True
+# Temporary testing switch. Set CORS_ALLOW_ALL_ORIGINS=True in backend .env only while debugging.
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
 
+# Secure cookie settings for HTTPS (production / cross-domain)
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
+
+# Allow cookies in cross-site requests
 CSRF_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_SAMESITE = "None"
 
