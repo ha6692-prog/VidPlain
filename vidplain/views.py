@@ -51,9 +51,16 @@ def register_user(request):
 @permission_classes([AllowAny])
 @csrf_exempt
 def login_user(request):
-    username = request.data.get('username')
+    email = request.data.get('email')
     password = request.data.get('password')
-    user = authenticate(username=username, password=password)
+    
+    # Debug logs
+    print("DATA:", request.data)
+    print("EMAIL:", email)
+    
+    user = authenticate(username=email, password=password)
+    
+    print("USER:", user)
     
     if user is not None:
         profile = getattr(user, 'profile', None)
