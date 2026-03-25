@@ -51,29 +51,15 @@ def register_user(request):
 @permission_classes([AllowAny])
 @csrf_exempt
 def login_user(request):
-    email = request.data.get('email')
-    password = request.data.get('password')
-    
-    # Debug logs
-    print("DATA:", request.data)
-    print("EMAIL:", email)
-    
+    email = request.data.get("email")
+    password = request.data.get("password")
+
     user = authenticate(username=email, password=password)
-    
-    print("USER:", user)
-    
-    if user is not None:
-        profile = getattr(user, 'profile', None)
-        return Response({
-            "message": "Login successful", 
-            "username": user.username,
-            "email": user.email,
-            "firstName": profile.first_name if profile else "",
-            "lastName": profile.last_name if profile else "",
-            "membership": profile.membership if profile else "free",
-        }, status=status.HTTP_200_OK)
-        
-    return Response({"error": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    if user is None:
+        return Response({"error": "Invalid Credentials"}, status=401)
+
+    return Response({"message": "Login successful"})
 
 
 # ─── Dashboard ───
