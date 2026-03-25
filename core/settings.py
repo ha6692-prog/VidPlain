@@ -141,14 +141,14 @@ FRONTEND_URL = os.environ.get(
 
 LOCAL_FRONTEND_URL = 'http://localhost:3000'
 
+
 CSRF_TRUSTED_ORIGINS = [
-    FRONTEND_URL,
-    LOCAL_FRONTEND_URL,
+    "https://your-vercel-app.vercel.app"
 ]
 
+
 CORS_ALLOWED_ORIGINS = [
-    FRONTEND_URL,
-    LOCAL_FRONTEND_URL,
+    "https://your-vercel-app.vercel.app"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
