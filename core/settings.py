@@ -142,25 +142,25 @@ FRONTEND_URL = os.environ.get(
 LOCAL_FRONTEND_URL = 'http://localhost:3000'
 
 
+
 CSRF_TRUSTED_ORIGINS = [
-    "https://your-vercel-app.vercel.app"
+    "https://vidplain-xi.vercel.app"
 ]
+
 
 
 CORS_ALLOWED_ORIGINS = [
-    "https://your-vercel-app.vercel.app"
+    "https://vidplain-xi.vercel.app"
 ]
+
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Temporary testing switch. Set CORS_ALLOW_ALL_ORIGINS=True in backend .env only while debugging.
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+# ⚡ QUICK TEMP FIX (for testing only)
+CORS_ALLOW_ALL_ORIGINS = True
 
-# Secure cookie settings for HTTPS (production / cross-domain)
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
-
-# Allow cookies in cross-site requests
 CSRF_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_SAMESITE = "None"
 
