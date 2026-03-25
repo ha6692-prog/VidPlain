@@ -5,3 +5,5 @@ groq==0.18.0
 python-dotenv==1.0.1
 gunicorn==23.0.0
 whitenoise==6.9.0
+psycopg2-binary==2.9.9
+dj-database-url==2.1.0
