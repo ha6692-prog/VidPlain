@@ -51,7 +51,7 @@ def register_user(request):
 @permission_classes([AllowAny])
 @csrf_exempt
 def login_user(request):
-    email = request.data.get("email")
+    email = request.data.get("email") or request.data.get("username")
     password = request.data.get("password")
 
     user = authenticate(username=email, password=password)
@@ -59,7 +59,15 @@ def login_user(request):
     if user is None:
         return Response({"error": "Invalid Credentials"}, status=401)
 
-    return Response({"message": "Login successful"})
+    profile = getattr(user, 'profile', None)
+    return Response({
+        "message": "Login successful",
+        "email": user.email,
+        "username": user.username,
+        "firstName": profile.first_name if profile else "",
+        "lastName": profile.last_name if profile else "",
+        "membership": profile.membership if profile else "free",
+    }, status=status.HTTP_200_OK)
 
 
 # ─── Dashboard ───
