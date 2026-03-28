@@ -67,6 +67,7 @@ def login_user(request):
         "firstName": profile.first_name if profile else "",
         "lastName": profile.last_name if profile else "",
         "membership": profile.membership if profile else "free",
+        "preferredLanguage": profile.preferred_language if profile else "english",
     }, status=status.HTTP_200_OK)
 
 
@@ -115,11 +116,49 @@ def dashboard_data(request):
             "overall_progress": overall_progress,
             "user_name": f"{profile.first_name} {profile.last_name}" if profile else user.username,
             "membership": membership,
+            "preferredLanguage": profile.preferred_language if profile else "english",
             "continue_subject": SubjectSerializer(continue_subject).data if continue_subject else None,
         })
     except Exception as e:
         import traceback
         traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ─── Update Language ───
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def update_language(request):
+    """Update user's preferred language"""
+    email = request.data.get('email')
+    language = request.data.get('language')
+
+    if not email:
+        return Response({"error": "Email required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not language:
+        return Response({"error": "Language required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+        profile = getattr(user, 'profile', None)
+        
+        if not profile:
+            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        profile.preferred_language = language
+        profile.save()
+        
+        return Response({
+            "message": "Language updated successfully",
+            "preferredLanguage": profile.preferred_language
+        }, status=status.HTTP_200_OK)
+        
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

@@ -9,6 +9,8 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState("account")
     const [progressStats, setProgressStats] = useState<any>(null)
     const [userEmail, setUserEmail] = useState<string>("")
+    const [selectedLanguage, setSelectedLanguage] = useState<string>("english")
+    const [languageSaved, setLanguageSaved] = useState(false)
 
     useEffect(() => {
         const userStr = localStorage.getItem("user")
@@ -17,11 +19,18 @@ export default function ProfilePage() {
                 const user = JSON.parse(userStr)
                 if (user.email) {
                     setUserEmail(user.email)
-                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/learning-progress/?email=${encodeURIComponent(user.email)}`)
+                    // Load preferred language from user data or API
+                    if (user.preferredLanguage) {
+                        setSelectedLanguage(user.preferredLanguage)
+                    }
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/?email=${encodeURIComponent(user.email)}`)
                         .then(res => res.json())
                         .then(data => {
                             if (data.success !== false) {
                                 setProgressStats(data)
+                                if (data.preferredLanguage) {
+                                    setSelectedLanguage(data.preferredLanguage)
+                                }
                             }
                         })
                         .catch(err => console.error("Error fetching progress:", err))
@@ -29,6 +38,33 @@ export default function ProfilePage() {
             } catch (e) { }
         }
     }, [])
+
+    const handleLanguageChange = async (language: string) => {
+        setSelectedLanguage(language)
+        setLanguageSaved(false)
+
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/update-language/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: userEmail, language }),
+            })
+
+            if (res.ok) {
+                setLanguageSaved(true)
+                // Update localStorage
+                const userStr = localStorage.getItem("user")
+                if (userStr) {
+                    const user = JSON.parse(userStr)
+                    user.preferredLanguage = language
+                    localStorage.setItem("user", JSON.stringify(user))
+                }
+                setTimeout(() => setLanguageSaved(false), 3000)
+            }
+        } catch (err) {
+            console.error("Error updating language:", err)
+        }
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-accent/30 p-6 md:p-12 font-sans pb-24">
@@ -145,6 +181,38 @@ export default function ProfilePage() {
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <h3 className="font-mono text-xl uppercase border-b border-border pb-2">Learning Preferences</h3>
 
+                            {/* Language Selection */}
+                            <div className="space-y-4 border border-border p-6 bg-background">
+                                <div>
+                                    <h4 className="font-mono text-sm uppercase mb-4">Preferred Language for AI Tutor</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {[
+                                            { code: "english", label: "English 🇬🇧" },
+                                            { code: "hindi", label: "हिन्दी 🇮🇳" },
+                                            { code: "tamil", label: "தமிழ் 🇮🇳" },
+                                            { code: "malayalam", label: "മലയാളം 🇮🇳" },
+                                            { code: "telugu", label: "తెలుగు 🇮🇳" },
+                                            { code: "kannada", label: "ಕನ್ನಡ 🇮🇳" },
+                                        ].map((lang) => (
+                                            <button
+                                                key={lang.code}
+                                                onClick={() => handleLanguageChange(lang.code)}
+                                                className={`p-3 border font-mono text-sm uppercase transition-colors ${selectedLanguage === lang.code
+                                                        ? "bg-accent border-accent text-background"
+                                                        : "border-border text-foreground hover:border-accent"
+                                                    }`}
+                                            >
+                                                {lang.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {languageSaved && (
+                                        <p className="text-accent text-sm font-mono mt-3">✓ Language saved successfully</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Other Preferences */}
                             <div className="space-y-6 border border-border p-6 bg-background">
                                 {[
                                     { title: "Weekly Goals", desc: "Receive email reminders for weekly study targets", active: true },

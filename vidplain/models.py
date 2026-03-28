@@ -7,11 +7,20 @@ class UserProfile(models.Model):
         ('free', 'Free Member'),
         ('pro', 'Pro Member'),
     ]
+    LANGUAGE_CHOICES = [
+        ('english', 'English'),
+        ('hindi', 'Hindi'),
+        ('tamil', 'Tamil'),
+        ('malayalam', 'Malayalam'),
+        ('telugu', 'Telugu'),
+        ('kannada', 'Kannada'),
+    ]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     age = models.IntegerField(null=True, blank=True)
     membership = models.CharField(max_length=10, choices=MEMBERSHIP_CHOICES, default='free')
+    preferred_language = models.CharField(max_length=20, choices=LANGUAGE_CHOICES, default='english')
 
     def __str__(self):
         return f"{self.user.username}'s Profile"

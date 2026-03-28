@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { BitmapChevron } from "@/components/ui/bitmap-chevron"
 import { AIResponseContent } from "@/components/ui/ai-response-content"
@@ -43,6 +44,7 @@ function extractSseData(buffer: string): { events: string[]; remaining: string }
 }
 
 export default function ChatPage() {
+    const router = useRouter()
     const [messages, setMessages] = useState<Message[]>([
         { role: "ai", content: "Hi there! I'm your Vidplain AI Tutor. Pick a subject above or tell me what you'd like to learn!" }
     ])
@@ -55,6 +57,7 @@ export default function ChatPage() {
     const [conversationId, setConversationId] = useState<number | null>(null)
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [level, setLevel] = useState<string>("intermediate")
+    const [language, setLanguage] = useState<string>("english")
     // Feedback state
     const [showFeedback, setShowFeedback] = useState(false)
     const [feedbackRating, setFeedbackRating] = useState(0)
@@ -65,6 +68,11 @@ export default function ChatPage() {
     const messageCountRef = useRef(0)
     const chatEndRef = useRef<HTMLDivElement>(null)
     const abortRef = useRef<AbortController | null>(null)
+
+    const handleLogout = () => {
+        localStorage.removeItem("user")
+        router.push("/")
+    }
 
     const getUserEmail = (): string | null => {
         try {
@@ -98,12 +106,26 @@ export default function ChatPage() {
 
     // Load subjects & conversations
     useEffect(() => {
+        // Load language preference from localStorage
+        const userStr = localStorage.getItem("user")
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr)
+                if (user.preferredLanguage) {
+                    setLanguage(user.preferredLanguage)
+                }
+            } catch (e) {
+                console.error("Error parsing user data:", e)
+            }
+        }
+
         const email = getUserEmail()
         if (!email) return
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/?email=${encodeURIComponent(email)}`)
             .then(res => res.json())
             .then(data => {
                 if (data.subjects) setSubjects(data.subjects)
+                if (data.preferredLanguage) setLanguage(data.preferredLanguage)
             })
             .catch(err => console.error("Error loading subjects:", err))
     }, [])
@@ -200,6 +222,17 @@ export default function ChatPage() {
         const email = getUserEmail()
         const effectiveSubject = activeSubject || (userMsg.length > 3 ? userMsg.split(" ").slice(0, 3).join(" ") : userMsg)
 
+        // Map language codes to full names for API
+        const languageMap: { [key: string]: string } = {
+            "english": "English",
+            "hindi": "Hindi",
+            "tamil": "Tamil",
+            "malayalam": "Malayalam",
+            "telugu": "Telugu",
+            "kannada": "Kannada"
+        }
+        const languageFullName = languageMap[language] || "English"
+
         setIsStreaming(true)
         setMessages(prev => [...prev, { role: "ai", content: "", streaming: true }])
 
@@ -215,7 +248,7 @@ export default function ChatPage() {
                 conversation_id: conversationId,
                 subject: effectiveSubject,
                 level,
-                language: "English",
+                language: languageFullName,
             }),
             signal: controller.signal,
         })
@@ -385,6 +418,7 @@ export default function ChatPage() {
                     <Link href="/counselor" className="text-secondary-foreground hover:text-foreground transition-colors py-2">Counselor</Link>
                     <Link href="/focus" className="text-secondary-foreground hover:text-foreground transition-colors py-2">Focus</Link>
                     <Link href="/profile" className="text-secondary-foreground hover:text-foreground transition-colors py-2">Profile</Link>
+                    <button onClick={handleLogout} className="text-secondary-foreground hover:text-foreground transition-colors py-2 text-left">Logout</button>
                 </div>
             </div>
 
@@ -392,8 +426,13 @@ export default function ChatPage() {
             <div className="flex-1 flex flex-col z-10 relative">
                 {/* Mobile Header */}
                 <div className="md:hidden p-4 border-b border-border flex justify-between items-center bg-background">
+                    <div className="flex gap-4">
+                        <Link href="/" className="text-sm font-mono text-accent">← Home</Link>
+                        <button onClick={handleLogout} className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors">
+                            Logout
+                        </button>
+                    </div>
                     <h1 className="text-xl font-mono uppercase">AI Tutor</h1>
-                    <Link href="/" className="text-sm font-mono text-accent">Home</Link>
                 </div>
 
                 {/* Active Subject Banner */}
