@@ -150,6 +150,7 @@ LOCAL_FRONTEND_URL = 'http://localhost:3000'
 CSRF_TRUSTED_ORIGINS = [
     "https://vidplain-2.onrender.com",
     "https://vidplain-xi.vercel.app",
+    "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
     "http://localhost:3000",
 ]
@@ -157,6 +158,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOWED_ORIGINS = [
     "https://vidplain-xi.vercel.app",
+    "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-2.onrender.com",
     "http://localhost:3000",
 ]
