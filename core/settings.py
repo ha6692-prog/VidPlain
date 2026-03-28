@@ -37,7 +37,7 @@ SECRET_KEY = 'django-insecure-fro)=70v8q3sw%y&t#akk*7$_0c-s2)8cjsrw=+#5#mxxf048*
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "vidplain-2.onrender.com",
+    
     "vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
     "localhost",
     "127.0.0.1",
