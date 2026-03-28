@@ -13,6 +13,7 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['@radix-ui/react-*'],
+    turbo: false,
   },
   webpack: (config) => {
     return config
