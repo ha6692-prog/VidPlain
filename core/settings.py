@@ -37,7 +37,7 @@ SECRET_KEY = 'django-insecure-fro)=70v8q3sw%y&t#akk*7$_0c-s2)8cjsrw=+#5#mxxf048*
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "vidplain-2.onrender.com",
+    
     "vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
     "localhost",
     "127.0.0.1",
@@ -150,6 +150,7 @@ LOCAL_FRONTEND_URL = 'http://localhost:3000'
 CSRF_TRUSTED_ORIGINS = [
     "https://vidplain-2.onrender.com",
     "https://vidplain-xi.vercel.app",
+    "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
     "http://localhost:3000",
 ]
@@ -157,6 +158,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOWED_ORIGINS = [
     "https://vidplain-xi.vercel.app",
+    "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-2.onrender.com",
     "http://localhost:3000",
 ]

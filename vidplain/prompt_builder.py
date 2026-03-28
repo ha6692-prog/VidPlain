@@ -1,7 +1,12 @@
 """
-Vidplain - Enhanced Adaptive Prompt Builder v2.0
+Vidplain - Enhanced Adaptive Prompt Builder v2.1
 Handles dynamic structure for any type of user query with improved
 response quality, richer personalization, and better student experience.
+
+v2.1 changes:
+- Added CONVERSATIONAL intent for greetings / small talk / off-topic chat
+- Conversational messages bypass the quiz/suggestions suffix entirely
+- Lightweight system prompt used for casual exchanges
 """
 
 import re
@@ -30,25 +35,26 @@ class ToneStyle(Enum):
 
 
 class IntentType(Enum):
-    PROBLEM      = "problem-solving"
-    DEFINITION   = "definition"
-    COMPARISON   = "comparison"
-    CODE         = "coding"
-    DEBUG        = "debugging"
-    ARCHITECTURE = "architecture"
-    STRATEGY     = "strategy"
-    EMOTIONAL    = "emotional-support"
-    CREATIVE     = "creative-writing"
-    OPINION      = "opinion"
-    FACTUAL      = "quick-fact"
-    TUTORIAL     = "tutorial"
-    SUMMARY      = "summarization"
-    ANALYTICAL   = "analytical"
-    BRAINSTORM   = "brainstorming"
-    REVISION     = "revision"        # NEW: student reviewing before exam
-    EXAM_PREP    = "exam-prep"       # NEW: practice questions, past paper style
-    MISCONCEPTION = "misconception"  # NEW: clearing a wrong belief
-    GENERAL      = "general"
+    PROBLEM       = "problem-solving"
+    DEFINITION    = "definition"
+    COMPARISON    = "comparison"
+    CODE          = "coding"
+    DEBUG         = "debugging"
+    ARCHITECTURE  = "architecture"
+    STRATEGY      = "strategy"
+    EMOTIONAL     = "emotional-support"
+    CREATIVE      = "creative-writing"
+    OPINION       = "opinion"
+    FACTUAL       = "quick-fact"
+    TUTORIAL      = "tutorial"
+    SUMMARY       = "summarization"
+    ANALYTICAL    = "analytical"
+    BRAINSTORM    = "brainstorming"
+    REVISION      = "revision"
+    EXAM_PREP     = "exam-prep"
+    MISCONCEPTION = "misconception"
+    GENERAL       = "general"
+    CONVERSATIONAL = "conversational"   # NEW: greetings, small talk, off-topic
 
 
 # ---------------------------------------------------------------------------
@@ -61,23 +67,40 @@ class UserContext:
     domain: str = "general"
     subject: str = ""
     language: str = "English"
-    tone: str = ToneStyle.FRIENDLY.value      # NEW
+    tone: str = ToneStyle.FRIENDLY.value
     weak_topics: Optional[List[str]] = None
-    preferred_example_type: str = "real-world"  # NEW: real-world / code / analogy / visual
-    exam_name: Optional[str] = None             # NEW: e.g. "SAT", "JEE", "GCSE"
-    show_memory_hook: bool = True               # NEW: add a mnemonic / memory trick
-    show_common_mistakes: bool = True           # NEW: highlight pitfalls
+    preferred_example_type: str = "real-world"
+    exam_name: Optional[str] = None
+    show_memory_hook: bool = True
+    show_common_mistakes: bool = True
 
 
 
 # ---------------------------------------------------------------------------
-# Intent Analyzer (v2)
+# Intent Analyzer (v2.1)
 # ---------------------------------------------------------------------------
 
 class IntentAnalyzer:
 
-    # Each keyword carries a weight: phrase keywords (with spaces) score 3,
-    # single-word keywords score 1.  Exact-boundary matching reduces false hits.
+    # Conversational patterns checked FIRST before any scoring
+    # These are simple regex / phrase patterns for small talk
+    CONVERSATIONAL_PATTERNS = [
+        r"^hi\b", r"^hey\b", r"^hello\b", r"^hiya\b", r"^howdy\b",
+        r"^good (morning|afternoon|evening|night)\b",
+        r"^what'?s up\b", r"^sup\b", r"^yo\b",
+        r"^how are you\b", r"^how r u\b", r"^how are u\b",
+        r"^are you (there|okay|ok|good|fine)\b",
+        r"^who are you\b", r"^what are you\b", r"^what is your name\b",
+        r"^can you help( me)?\b",
+        r"^thanks?\b", r"^thank you\b", r"^thx\b", r"^ty\b",
+        r"^ok\b", r"^okay\b", r"^got it\b", r"^cool\b", r"^nice\b",
+        r"^great\b", r"^awesome\b", r"^sounds good\b",
+        r"^bye\b", r"^goodbye\b", r"^see you\b", r"^see ya\b",
+        r"^lol\b", r"^haha\b", r"^lmao\b",
+        r"^(yes|no|nope|yep|yeah|nah)\b",
+        r"^tell me a joke\b", r"^say something funny\b",
+    ]
+
     INTENT_KEYWORDS: Dict[IntentType, List[str]] = {
         IntentType.PROBLEM:       ["solve", "calculate", "find", "compute", "determine",
                                    "how much", "how many", "what is the value", "work out"],
@@ -127,6 +150,7 @@ class IntentAnalyzer:
     }
 
     INTENT_PRIORITY: List[IntentType] = [
+        IntentType.CONVERSATIONAL,   # highest priority — checked before scoring
         IntentType.DEBUG,
         IntentType.MISCONCEPTION,
         IntentType.EXAM_PREP,
@@ -150,7 +174,26 @@ class IntentAnalyzer:
 
     @staticmethod
     def _normalize(question: str) -> str:
-        return " ".join(question.lower().split())
+        return " ".join(question.lower().strip().split())
+
+    @classmethod
+    def is_conversational(cls, question: str) -> bool:
+        """
+        Returns True if the message is casual / small talk and should NOT
+        trigger the full tutor response format.
+        """
+        q = cls._normalize(question)
+
+        # Very short messages with no question word are almost always conversational
+        words = q.split()
+        if len(words) <= 3 and not any(w in q for w in ["what", "why", "how", "when", "where", "who", "which"]):
+            return True
+
+        for pattern in cls.CONVERSATIONAL_PATTERNS:
+            if re.search(pattern, q):
+                return True
+
+        return False
 
     @classmethod
     def _score(cls, q: str) -> Dict[IntentType, int]:
@@ -159,7 +202,6 @@ class IntentAnalyzer:
             score = 0
             for kw in keywords:
                 if kw in q:
-                    # Multi-word phrases get higher weight
                     score += 3 if " " in kw else 1
             if score > 0:
                 scores[intent] = score
@@ -167,6 +209,10 @@ class IntentAnalyzer:
 
     @classmethod
     def detect_top_intents(cls, question: str, max_items: int = 2) -> List[IntentType]:
+        # Conversational check runs before keyword scoring
+        if cls.is_conversational(question):
+            return [IntentType.CONVERSATIONAL]
+
         q = cls._normalize(question)
         scores = cls._score(q)
 
@@ -197,6 +243,9 @@ class IntentAnalyzer:
     @classmethod
     def confidence(cls, question: str) -> Tuple[IntentType, float]:
         """Return the top intent and a rough confidence score (0-1)."""
+        if cls.is_conversational(question):
+            return IntentType.CONVERSATIONAL, 1.0
+
         q = cls._normalize(question)
         scores = cls._score(q)
         if not scores:
@@ -208,12 +257,11 @@ class IntentAnalyzer:
 
 
 # ---------------------------------------------------------------------------
-# Prompt Builder (v2)
+# Prompt Builder (v2.1)
 # ---------------------------------------------------------------------------
 
 class VidplainPromptBuilder:
 
-    # --- Intent-specific response guidance ---
     INTENT_GUIDANCE = {
         IntentType.PROBLEM:       "Show step-by-step reasoning. State what is given, what is asked, then solve clearly.",
         IntentType.DEFINITION:    "Start with a one-sentence core definition, then expand with intuition, real-world example, and analogy.",
@@ -234,9 +282,10 @@ class VidplainPromptBuilder:
         IntentType.EXAM_PREP:     "Write 2-3 exam-style questions with mark-scheme style answers. Indicate marks per question.",
         IntentType.MISCONCEPTION: "Acknowledge the misconception kindly. Explain clearly why it is incorrect. Give the correct understanding with evidence.",
         IntentType.GENERAL:       "Structure the response naturally with a clear opening, body, and takeaway.",
+        # CONVERSATIONAL has its own lightweight system prompt — no guidance block needed
+        IntentType.CONVERSATIONAL: "",
     }
 
-    # --- Tone style instructions ---
     TONE_GUIDANCE = {
         ToneStyle.FRIENDLY.value:  "Use a warm, encouraging tone. Address the student directly. Celebrate small wins.",
         ToneStyle.FORMAL.value:    "Use precise academic language. Avoid contractions. Structure with clear sections.",
@@ -245,42 +294,39 @@ class VidplainPromptBuilder:
         ToneStyle.HUMOROUS.value:  "Use wit, light humour, and amusing analogies. Keep it fun but never sacrifice accuracy.",
     }
 
-    # --- Subject-specific style hints ---
     SUBJECT_STYLE_HINTS = {
-        "math":           "Show each algebraic step. Use = signs aligned where possible. State the rule being applied.",
-        "mathematics":    "Show each algebraic step. Use = signs aligned where possible. State the rule being applied.",
-        "physics":        "Name the law or principle first. Use units consistently. Relate to an observable phenomenon.",
-        "chemistry":      "Show balanced equations. Name mechanisms. Relate to periodic trends where relevant.",
-        "biology":        "Use cause-effect chains. Connect structure to function. Reference real organisms.",
-        "history":        "Anchor every claim to a date, place, or person. Show cause and consequence.",
-        "programming":    "Include a minimal runnable example. Note time/space complexity where relevant.",
+        "math":             "Show each algebraic step. Use = signs aligned where possible. State the rule being applied.",
+        "mathematics":      "Show each algebraic step. Use = signs aligned where possible. State the rule being applied.",
+        "physics":          "Name the law or principle first. Use units consistently. Relate to an observable phenomenon.",
+        "chemistry":        "Show balanced equations. Name mechanisms. Relate to periodic trends where relevant.",
+        "biology":          "Use cause-effect chains. Connect structure to function. Reference real organisms.",
+        "history":          "Anchor every claim to a date, place, or person. Show cause and consequence.",
+        "programming":      "Include a minimal runnable example. Note time/space complexity where relevant.",
         "computer science": "Balance theory with implementation. Discuss algorithmic correctness and complexity.",
-        "economics":      "State assumptions explicitly. Use supply/demand reasoning. Quantify where possible.",
-        "literature":     "Reference specific text evidence. Analyse theme, tone, and authorial intent.",
-        "statistics":     "Clarify population vs sample. Show formula, then numeric substitution, then interpretation.",
-        "geography":      "Use spatial reasoning. Reference specific regions, climate zones, or case studies.",
-        "psychology":     "Name the theory and its author. Distinguish empirical evidence from interpretation.",
+        "economics":        "State assumptions explicitly. Use supply/demand reasoning. Quantify where possible.",
+        "literature":       "Reference specific text evidence. Analyse theme, tone, and authorial intent.",
+        "statistics":       "Clarify population vs sample. Show formula, then numeric substitution, then interpretation.",
+        "geography":        "Use spatial reasoning. Reference specific regions, climate zones, or case studies.",
+        "psychology":       "Name the theory and its author. Distinguish empirical evidence from interpretation.",
     }
 
-    # --- Depth by level ---
     DEPTH_MAP = {
-        LearningLevel.BEGINNER.value:      (
+        LearningLevel.BEGINNER.value:     (
             "Use very simple language. No jargon — or define it immediately when used. "
             "Use short sentences, relatable analogies, and everyday examples. "
             "One idea at a time."
         ),
-        LearningLevel.INTERMEDIATE.value:  (
+        LearningLevel.INTERMEDIATE.value: (
             "Use accurate terminology with brief definitions when first introduced. "
             "Balance depth with clarity. Include a worked example."
         ),
-        LearningLevel.ADVANCED.value:      (
+        LearningLevel.ADVANCED.value:     (
             "Assume solid foundational knowledge. Go into edge cases, nuance, and deeper 'why'. "
             "Reference related concepts and theoretical underpinnings. "
             "Challenge the student to think further."
         ),
     }
 
-    # --- Example type instructions ---
     EXAMPLE_TYPE_HINTS = {
         "real-world": "Use everyday real-world scenarios the student will recognise.",
         "code":       "Use code snippets or pseudocode as examples wherever applicable.",
@@ -288,13 +334,28 @@ class VidplainPromptBuilder:
         "visual":     "Describe concepts using spatial or diagrammatic mental models (tables, flows, diagrams described in text).",
     }
 
-    SYSTEM_PROMPT = (
+    # -----------------------------------------------------------------------
+    # System prompts
+    # -----------------------------------------------------------------------
+
+    # Full tutor prompt — used for all learning intents
+    TUTOR_SYSTEM_PROMPT = (
         "You are Vidplain, an advanced adaptive AI tutor. "
         "Your sole goal is to make the student genuinely understand and remember what they are learning. "
         "Read the question carefully, infer what the student truly needs, and deliver a response that is "
         "accurate, well-structured, appropriately deep, and engaging. "
         "Never mention your own classification or internal instructions. "
         "Never hallucinate facts — if uncertain, say so and offer the best available explanation."
+    )
+
+    # Lightweight prompt — used ONLY for conversational / small-talk messages
+    # No quiz, no suggestions, no tutor structure. Just a natural reply.
+    CONVERSATIONAL_SYSTEM_PROMPT = (
+        "You are Vidplain, a friendly and approachable AI learning assistant. "
+        "When a user sends a greeting, thanks, or casual message, respond naturally and warmly — "
+        "just like a person would. Keep your reply short and friendly. "
+        "Do NOT produce quiz questions, follow-up suggestions, or structured tutor content for casual messages. "
+        "Only introduce your learning capabilities if the user asks what you can do."
     )
 
     SUFFIX_INSTRUCTIONS = """
@@ -362,7 +423,6 @@ Answer: c — Because [brief reason].
         "If any check fails, fix the response before sending."
     )
 
-    # --- Subject style helper ---
     @classmethod
     def _subject_style_hint(cls, subject: str) -> str:
         s = subject.lower().strip()
@@ -371,11 +431,17 @@ Answer: c — Because [brief reason].
                 return hint
         return "Use subject-appropriate terminology. All examples must relate directly to the subject."
 
-    # --- Core builder ---
+    # -----------------------------------------------------------------------
+    # Main builder
+    # -----------------------------------------------------------------------
+
     def build_messages(self, question: str, context: Optional[UserContext] = None) -> list:
         """
         Returns a list of messages suitable for any OpenAI-compatible chat API.
         (Groq, OpenAI, Anthropic messages format, etc.)
+
+        Conversational messages get a lightweight system prompt with no quiz/suggestions.
+        Learning questions get the full adaptive tutor prompt.
         """
         if not question or not question.strip():
             raise ValueError("Question cannot be empty.")
@@ -383,33 +449,42 @@ Answer: c — Because [brief reason].
         if context is None:
             context = UserContext()
 
-        # --- Intent detection ---
+        # --- Detect intent ---
         intents = IntentAnalyzer.detect_top_intents(question)
         primary_intent = intents[0]
+
+        # ===================================================================
+        # PATH A: Conversational — short, natural, no tutor scaffolding
+        # ===================================================================
+        if primary_intent == IntentType.CONVERSATIONAL:
+            return [
+                {"role": "system", "content": self.CONVERSATIONAL_SYSTEM_PROMPT},
+                {"role": "user",   "content": question},
+            ]
+
+        # ===================================================================
+        # PATH B: Learning question — full adaptive tutor response
+        # ===================================================================
         secondary_intent = intents[1] if len(intents) > 1 else None
 
-        guidance        = self.INTENT_GUIDANCE.get(primary_intent, "")
-        sec_guidance    = self.INTENT_GUIDANCE.get(secondary_intent, "") if secondary_intent else ""
+        guidance     = self.INTENT_GUIDANCE.get(primary_intent, "")
+        sec_guidance = self.INTENT_GUIDANCE.get(secondary_intent, "") if secondary_intent else ""
 
-        # --- Depth ---
         depth = self.DEPTH_MAP.get(
             context.level,
             self.DEPTH_MAP[LearningLevel.INTERMEDIATE.value]
         )
 
-        # --- Tone ---
         tone_hint = self.TONE_GUIDANCE.get(
             context.tone,
             self.TONE_GUIDANCE[ToneStyle.FRIENDLY.value]
         )
 
-        # --- Example type ---
         example_hint = self.EXAMPLE_TYPE_HINTS.get(
             context.preferred_example_type,
             self.EXAMPLE_TYPE_HINTS["real-world"]
         )
 
-        # --- Weak topics ---
         weak_hint = ""
         if context.weak_topics:
             weak_hint = (
@@ -417,7 +492,6 @@ Answer: c — Because [brief reason].
                 "Pay extra attention to these areas — add short, simple clarifications when they arise."
             )
 
-        # --- Subject context ---
         subject_hint = ""
         if context.subject:
             subject_hint = (
@@ -426,7 +500,6 @@ Answer: c — Because [brief reason].
                 f"{self._subject_style_hint(context.subject)}"
             )
 
-        # --- Exam context ---
         exam_hint = ""
         if context.exam_name:
             exam_hint = (
@@ -434,7 +507,6 @@ Answer: c — Because [brief reason].
                 "Tailor depth, style, and examples to this exam's expectations and mark schemes."
             )
 
-        # --- Multi-part hint ---
         multi_part_hint = ""
         if IntentAnalyzer.is_multi_part(question):
             multi_part_hint = (
@@ -442,7 +514,6 @@ Answer: c — Because [brief reason].
                 "Use clear sub-headings or numbered sections."
             )
 
-        # --- Optional enrichment sections ---
         enrichment_hints = []
         if context.show_common_mistakes:
             enrichment_hints.append(
@@ -454,7 +525,6 @@ Answer: c — Because [brief reason].
             )
         enrichment_block = "\n".join(enrichment_hints)
 
-        # --- Language rule ---
         language_instruction = (
             f"CRITICAL LANGUAGE RULE: Your ENTIRE response — explanation, suggestions, quiz content — "
             f"MUST be in {context.language}. "
@@ -462,16 +532,14 @@ Answer: c — Because [brief reason].
             "---SUGGESTIONS--- and ---QUIZ--- and **Quick Knowledge Check** ✅."
         )
 
-        # --- Quality checks ---
         quality_checks = self.QUALITY_CHECKS_TEMPLATE.format(
             language=context.language,
             level=context.level,
         )
 
-        # --- Assemble system prompt ---
         system_content = "\n\n".join(filter(None, [
             language_instruction,
-            self.SYSTEM_PROMPT,
+            self.TUTOR_SYSTEM_PROMPT,
             f"PRIMARY RESPONSE STYLE: {guidance}",
             f"SECONDARY RESPONSE STYLE: {sec_guidance}" if sec_guidance else "",
             f"DEPTH LEVEL ({context.level}): {depth}",
@@ -487,7 +555,6 @@ Answer: c — Because [brief reason].
             quality_checks,
         ]))
 
-        # --- User message ---
         user_content = (
             f"Question: {question}\n\n"
             f"Reminder: respond fully in {context.language}. "
@@ -499,16 +566,20 @@ Answer: c — Because [brief reason].
             {"role": "user",   "content": user_content},
         ]
 
-    # --- Convenience: inspect what intents were detected ---
+    # -----------------------------------------------------------------------
+    # Utility
+    # -----------------------------------------------------------------------
+
     @staticmethod
     def inspect_intent(question: str) -> dict:
         intents = IntentAnalyzer.detect_top_intents(question)
         top, conf = IntentAnalyzer.confidence(question)
         return {
-            "primary":    intents[0].value,
-            "secondary":  intents[1].value if len(intents) > 1 else None,
-            "confidence": conf,
-            "multi_part": IntentAnalyzer.is_multi_part(question),
+            "primary":        intents[0].value,
+            "secondary":      intents[1].value if len(intents) > 1 else None,
+            "confidence":     conf,
+            "multi_part":     IntentAnalyzer.is_multi_part(question),
+            "conversational": top == IntentType.CONVERSATIONAL,
         }
 
 
@@ -517,3 +588,29 @@ Answer: c — Because [brief reason].
 # ---------------------------------------------------------------------------
 
 prompt_builder = VidplainPromptBuilder()
+
+
+# ---------------------------------------------------------------------------
+# Quick smoke test  (python vidplain_prompt_builder.py)
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    cases = [
+        "Hello!",
+        "Hey, how are you?",
+        "Thanks!",
+        "What is photosynthesis?",
+        "Solve: 2x + 5 = 13",
+        "hi there",
+        "what is the difference between RAM and ROM?",
+        "good morning",
+        "ok got it",
+    ]
+
+    builder = VidplainPromptBuilder()
+
+    for msg in cases:
+        info = builder.inspect_intent(msg)
+        msgs = builder.build_messages(msg)
+        path = "💬 CONVERSATIONAL" if info["conversational"] else "📚 TUTOR"
+        print(f"{path}  |  '{msg}'  →  intent={info['primary']}")

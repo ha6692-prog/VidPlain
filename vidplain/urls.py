@@ -9,6 +9,7 @@ urlpatterns = [
     path('mood/', views.save_mood, name='save-mood'),
     path('subjects/', views.create_or_update_subject, name='subjects'),
     path('track-activity/', views.track_activity, name='track-activity'),
+    path('profile/update-language/', views.update_language, name='update-language'),
     # Chat history
     path('conversations/', views.list_conversations, name='list-conversations'),
     path('conversations/new/', views.new_conversation, name='new-conversation'),

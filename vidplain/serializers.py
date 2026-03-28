@@ -5,7 +5,7 @@ from .models import UserProfile, Subject, MoodEntry, Activity
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ('first_name', 'last_name', 'age')
+        fields = ('first_name', 'last_name', 'age', 'preferred_language')
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=True)
