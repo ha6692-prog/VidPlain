@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback, Suspense } from "react"
+import { useState, useEffect, useCallback, Suspense, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { supabase } from "../../src/supabase"
 
 function isValidEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -51,6 +52,10 @@ function AuthContent() {
     const [signupErrors, setSignupErrors] = useState<Record<string, string>>({})
     const [signupLoading, setSignupLoading] = useState(false)
 
+    // Prevent double-submit refs
+    const signinSubmitting = useRef(false)
+    const signupSubmitting = useRef(false)
+
     useEffect(() => {
         if (searchParams.get("mode") === "signup") {
             setMode("signup")
@@ -73,6 +78,11 @@ function AuthContent() {
 
     const handleSignin = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Prevent double submit
+        if (signinSubmitting.current) return
+        signinSubmitting.current = true
+
         const errors: Record<string, string> = {}
 
         if (!signinEmail) {
@@ -89,60 +99,70 @@ function AuthContent() {
 
         setSigninErrors(errors)
 
-        if (Object.keys(errors).length === 0) {
-            setSigninLoading(true)
-            try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login/`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username: signinEmail, password: signinPassword }),
-                })
-                const data = await res.json()
-                console.log("Login response:", res.status, data)
+        if (Object.keys(errors).length > 0) {
+            signinSubmitting.current = false
+            return
+        }
 
-                if (res.ok && data.email) {
-                    const userData = {
-                        email: data.email || signinEmail,
-                        username: data.username || signinEmail,
-                        firstName: data.firstName || "",
-                        lastName: data.lastName || "",
-                        membership: data.membership || "free",
-                    }
-                    console.log("Storing user data:", userData)
-                    localStorage.setItem("user", JSON.stringify(userData))
+        setSigninLoading(true)
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: signinEmail,
+                password: signinPassword,
+            })
 
-                    // Use Next.js router for proper navigation
-                    console.log("Redirecting to dashboard...")
-                    router.push("/dashboard")
-                } else {
-                    const errorMsg = data?.error || data?.message || "Invalid credentials"
-                    console.error("Login failed:", errorMsg, data)
-                    setSigninErrors({ email: errorMsg })
-                }
-            } catch (err) {
-                console.error("Sign in error:", err)
-                setSigninErrors({ email: "Network error. Is the server running?" })
-            } finally {
-                setSigninLoading(false)
+            if (error || !data.user) {
+                // Common cause: email not confirmed. Show clear message.
+                const msg =
+                    error?.message === "Invalid login credentials"
+                        ? "Invalid email or password. If you just signed up, please check your email for a confirmation link — or disable email confirmation in Supabase."
+                        : error?.message || "Login failed"
+                setSigninErrors({ email: msg })
+                return
             }
+
+            // Store user info
+            localStorage.setItem(
+                "user",
+                JSON.stringify({
+                    id: data.user.id,
+                    email: data.user.email ?? signinEmail,
+                    firstName: data.user.user_metadata?.firstName ?? "",
+                    lastName: data.user.user_metadata?.lastName ?? "",
+                    membership: "free",
+                })
+            )
+
+            router.push("/dashboard")
+        } catch (err) {
+            console.error("Sign in error:", err)
+            setSigninErrors({ email: "Network error. Please try again." })
+        } finally {
+            setSigninLoading(false)
+            signinSubmitting.current = false
         }
     }
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Prevent double submit
+        if (signupSubmitting.current) return
+        signupSubmitting.current = true
+
         const errors: Record<string, string> = {}
 
-        if (!firstName || firstName.length < 2) {
+        if (!firstName || firstName.trim().length < 2) {
             errors.firstName = "First name must be at least 2 characters"
         }
-        if (!lastName || lastName.length < 2) {
+        if (!lastName || lastName.trim().length < 2) {
             errors.lastName = "Last name must be at least 2 characters"
         }
         if (!signupEmail || !isValidEmail(signupEmail)) {
             errors.email = "Please enter a valid email address"
         }
         if (!age || parseInt(age) < 13 || parseInt(age) > 120) {
-            errors.age = "Please enter a valid age (13-120)"
+            errors.age = "Please enter a valid age (13–120)"
         }
         if (!signupPassword || signupPassword.length < 6) {
             errors.password = "Password must be at least 6 characters"
@@ -153,43 +173,62 @@ function AuthContent() {
 
         setSignupErrors(errors)
 
-        if (Object.keys(errors).length === 0) {
-            setSignupLoading(true)
-            try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register/`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        firstName,
-                        lastName,
-                        email: signupEmail,
+        if (Object.keys(errors).length > 0) {
+            signupSubmitting.current = false
+            return
+        }
+
+        setSignupLoading(true)
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email: signupEmail,
+                password: signupPassword,
+                options: {
+                    data: {
+                        firstName: firstName.trim(),
+                        lastName: lastName.trim(),
                         age: parseInt(age),
-                        password: signupPassword,
-                    }),
-                })
-                const data = await res.json()
-                if (res.ok) {
-                    // Auto-login after registration
-                    localStorage.setItem("user", JSON.stringify({
-                        email: signupEmail,
-                        username: signupEmail,
-                        firstName,
-                        lastName,
-                        membership: "free",
-                    }))
-                    console.log("Registration successful, redirecting to dashboard...")
-                    router.push("/dashboard")
-                } else {
-                    const errMsg = typeof data === "object"
-                        ? Object.values(data).flat().join(", ")
-                        : "Registration failed"
-                    setSignupErrors({ email: errMsg })
-                }
-            } catch {
-                setSignupErrors({ email: "Network error. Is the server running?" })
-            } finally {
-                setSignupLoading(false)
+                    },
+                },
+            })
+
+            if (error) {
+                // Handle "User already registered"
+                const msg =
+                    error.message.toLowerCase().includes("already registered")
+                        ? "An account with this email already exists. Please sign in instead."
+                        : error.message
+                setSignupErrors({ email: msg })
+                return
             }
+
+            // If email confirmation is OFF in Supabase, data.session will exist → auto-login
+            // If email confirmation is ON, data.session will be null → show message
+            if (data.session && data.user) {
+                localStorage.setItem(
+                    "user",
+                    JSON.stringify({
+                        id: data.user.id,
+                        email: signupEmail,
+                        firstName: firstName.trim(),
+                        lastName: lastName.trim(),
+                        membership: "free",
+                    })
+                )
+                router.push("/dashboard")
+            } else {
+                // Email confirmation is still ON — tell the user
+                setSignupErrors({
+                    email:
+                        "Account created! Please check your email to confirm your account, then sign in.",
+                })
+            }
+        } catch (err) {
+            console.error("Signup error:", err)
+            setSignupErrors({ email: "Network error. Please try again." })
+        } finally {
+            setSignupLoading(false)
+            signupSubmitting.current = false
         }
     }
 
@@ -218,13 +257,15 @@ function AuthContent() {
                             <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent block mb-4">
                                 Authentication
                             </span>
-                            <h1 className="font-[var(--font-bebas)] text-4xl md:text-5xl tracking-tight mb-2">WELCOME BACK</h1>
+                            <h1 className="font-[var(--font-bebas)] text-4xl md:text-5xl tracking-tight mb-2">
+                                WELCOME BACK
+                            </h1>
                             <p className="font-mono text-xs text-muted-foreground">
                                 Enter your details to access your account.
                             </p>
                         </div>
 
-                        <form onSubmit={handleSignin}>
+                        <form onSubmit={handleSignin} noValidate>
                             <div className="mb-4">
                                 <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
                                     Email Address
@@ -236,10 +277,11 @@ function AuthContent() {
                                     placeholder="you@example.com"
                                     autoComplete="email"
                                     className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                    suppressHydrationWarning
                                 />
                                 {signinErrors.email && (
-                                    <span className="block font-mono text-[11px] text-destructive mt-1">{signinErrors.email}</span>
+                                    <span className="block font-mono text-[11px] text-destructive mt-1">
+                                        {signinErrors.email}
+                                    </span>
                                 )}
                             </div>
 
@@ -254,30 +296,36 @@ function AuthContent() {
                                     placeholder="••••••••"
                                     autoComplete="current-password"
                                     className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                    suppressHydrationWarning
                                 />
                                 {signinErrors.password && (
-                                    <span className="block font-mono text-[11px] text-destructive mt-1">{signinErrors.password}</span>
+                                    <span className="block font-mono text-[11px] text-destructive mt-1">
+                                        {signinErrors.password}
+                                    </span>
                                 )}
                             </div>
 
                             <div className="text-right mb-6">
-                                <a href="#" className="font-mono text-[11px] text-accent hover:text-foreground transition-colors">
+                                <a
+                                    href="#"
+                                    className="font-mono text-[11px] text-accent hover:text-foreground transition-colors"
+                                >
                                     Forgot password?
                                 </a>
                             </div>
 
                             <button
                                 type="submit"
-                                className="w-full border border-foreground/20 bg-foreground text-background px-6 py-3 font-mono text-xs uppercase tracking-widest hover:bg-accent hover:text-accent-foreground hover:border-accent transition-all duration-200 mb-6"
-                                suppressHydrationWarning
+                                disabled={signinLoading}
+                                className="w-full border border-foreground/20 bg-foreground text-background px-6 py-3 font-mono text-xs uppercase tracking-widest hover:bg-accent hover:text-accent-foreground hover:border-accent transition-all duration-200 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Sign In
+                                {signinLoading ? "Signing in..." : "Sign In"}
                             </button>
 
                             <div className="flex items-center gap-4 mb-6">
                                 <div className="flex-1 h-px bg-border" />
-                                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Or continue with</span>
+                                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                                    Or continue with
+                                </span>
                                 <div className="flex-1 h-px bg-border" />
                             </div>
 
@@ -285,14 +333,12 @@ function AuthContent() {
                                 <button
                                     type="button"
                                     className="flex items-center justify-center gap-2 border border-border bg-secondary px-4 py-3 font-mono text-xs text-foreground hover:border-accent hover:text-accent transition-all duration-200"
-                                    suppressHydrationWarning
                                 >
                                     Google
                                 </button>
                                 <button
                                     type="button"
                                     className="flex items-center justify-center gap-2 border border-border bg-secondary px-4 py-3 font-mono text-xs text-foreground hover:border-accent hover:text-accent transition-all duration-200"
-                                    suppressHydrationWarning
                                 >
                                     GitHub
                                 </button>
@@ -304,7 +350,6 @@ function AuthContent() {
                                     type="button"
                                     onClick={() => switchMode("signup")}
                                     className="text-accent hover:text-foreground transition-colors bg-transparent border-none cursor-pointer font-mono text-xs"
-                                    suppressHydrationWarning
                                 >
                                     Sign up
                                 </button>
@@ -320,13 +365,15 @@ function AuthContent() {
                             <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent block mb-4">
                                 Registration
                             </span>
-                            <h1 className="font-[var(--font-bebas)] text-4xl md:text-5xl tracking-tight mb-2">CREATE ACCOUNT</h1>
+                            <h1 className="font-[var(--font-bebas)] text-4xl md:text-5xl tracking-tight mb-2">
+                                CREATE ACCOUNT
+                            </h1>
                             <p className="font-mono text-xs text-muted-foreground">
                                 Start your learning journey with Vidplain.
                             </p>
                         </div>
 
-                        <form onSubmit={handleSignup}>
+                        <form onSubmit={handleSignup} noValidate>
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">
@@ -338,10 +385,11 @@ function AuthContent() {
                                         onChange={(e) => setFirstName(e.target.value)}
                                         placeholder="First name"
                                         className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                        suppressHydrationWarning
                                     />
                                     {signupErrors.firstName && (
-                                        <span className="block font-mono text-[11px] text-destructive mt-1">{signupErrors.firstName}</span>
+                                        <span className="block font-mono text-[11px] text-destructive mt-1">
+                                            {signupErrors.firstName}
+                                        </span>
                                     )}
                                 </div>
                                 <div>
@@ -354,10 +402,11 @@ function AuthContent() {
                                         onChange={(e) => setLastName(e.target.value)}
                                         placeholder="Last name"
                                         className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                        suppressHydrationWarning
                                     />
                                     {signupErrors.lastName && (
-                                        <span className="block font-mono text-[11px] text-destructive mt-1">{signupErrors.lastName}</span>
+                                        <span className="block font-mono text-[11px] text-destructive mt-1">
+                                            {signupErrors.lastName}
+                                        </span>
                                     )}
                                 </div>
                             </div>
@@ -373,10 +422,11 @@ function AuthContent() {
                                     placeholder="you@example.com"
                                     autoComplete="email"
                                     className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                    suppressHydrationWarning
                                 />
                                 {signupErrors.email && (
-                                    <span className="block font-mono text-[11px] text-destructive mt-1">{signupErrors.email}</span>
+                                    <span className="block font-mono text-[11px] text-destructive mt-1">
+                                        {signupErrors.email}
+                                    </span>
                                 )}
                             </div>
 
@@ -392,10 +442,11 @@ function AuthContent() {
                                     min={13}
                                     max={120}
                                     className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                    suppressHydrationWarning
                                 />
                                 {signupErrors.age && (
-                                    <span className="block font-mono text-[11px] text-destructive mt-1">{signupErrors.age}</span>
+                                    <span className="block font-mono text-[11px] text-destructive mt-1">
+                                        {signupErrors.age}
+                                    </span>
                                 )}
                             </div>
 
@@ -410,35 +461,39 @@ function AuthContent() {
                                     placeholder="Create a password"
                                     autoComplete="new-password"
                                     className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                    suppressHydrationWarning
                                 />
-                                {/* Password strength bar */}
                                 {passwordStrength && (
                                     <>
                                         <div className="mt-2 h-[3px] bg-border overflow-hidden">
                                             <div
                                                 className={`h-full transition-all duration-300 ${passwordStrength === "weak"
-                                                    ? "w-1/3 bg-destructive"
-                                                    : passwordStrength === "medium"
-                                                        ? "w-2/3 bg-accent"
-                                                        : "w-full bg-green-500"
+                                                        ? "w-1/3 bg-destructive"
+                                                        : passwordStrength === "medium"
+                                                            ? "w-2/3 bg-accent"
+                                                            : "w-full bg-green-500"
                                                     }`}
                                             />
                                         </div>
                                         <span
                                             className={`block font-mono text-[10px] mt-1 ${passwordStrength === "weak"
-                                                ? "text-destructive"
-                                                : passwordStrength === "medium"
-                                                    ? "text-accent"
-                                                    : "text-green-500"
+                                                    ? "text-destructive"
+                                                    : passwordStrength === "medium"
+                                                        ? "text-accent"
+                                                        : "text-green-500"
                                                 }`}
                                         >
-                                            {passwordStrength === "weak" ? "Weak password" : passwordStrength === "medium" ? "Medium password" : "Strong password"}
+                                            {passwordStrength === "weak"
+                                                ? "Weak password"
+                                                : passwordStrength === "medium"
+                                                    ? "Medium password"
+                                                    : "Strong password"}
                                         </span>
                                     </>
                                 )}
                                 {signupErrors.password && (
-                                    <span className="block font-mono text-[11px] text-destructive mt-1">{signupErrors.password}</span>
+                                    <span className="block font-mono text-[11px] text-destructive mt-1">
+                                        {signupErrors.password}
+                                    </span>
                                 )}
                             </div>
 
@@ -453,19 +508,20 @@ function AuthContent() {
                                     placeholder="Confirm your password"
                                     autoComplete="new-password"
                                     className="w-full bg-secondary border border-border px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none transition-colors"
-                                    suppressHydrationWarning
                                 />
                                 {signupErrors.confirmPassword && (
-                                    <span className="block font-mono text-[11px] text-destructive mt-1">{signupErrors.confirmPassword}</span>
+                                    <span className="block font-mono text-[11px] text-destructive mt-1">
+                                        {signupErrors.confirmPassword}
+                                    </span>
                                 )}
                             </div>
 
                             <button
                                 type="submit"
-                                className="w-full border border-foreground/20 bg-foreground text-background px-6 py-3 font-mono text-xs uppercase tracking-widest hover:bg-accent hover:text-accent-foreground hover:border-accent transition-all duration-200 mb-6"
-                                suppressHydrationWarning
+                                disabled={signupLoading}
+                                className="w-full border border-foreground/20 bg-foreground text-background px-6 py-3 font-mono text-xs uppercase tracking-widest hover:bg-accent hover:text-accent-foreground hover:border-accent transition-all duration-200 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Create Account
+                                {signupLoading ? "Creating account..." : "Create Account"}
                             </button>
 
                             <p className="text-center font-mono text-xs text-muted-foreground">
@@ -474,7 +530,6 @@ function AuthContent() {
                                     type="button"
                                     onClick={() => switchMode("signin")}
                                     className="text-accent hover:text-foreground transition-colors bg-transparent border-none cursor-pointer font-mono text-xs"
-                                    suppressHydrationWarning
                                 >
                                     Sign in
                                 </button>
@@ -483,7 +538,6 @@ function AuthContent() {
                     </div>
                 )}
 
-                {/* Bottom tag */}
                 <div className="mt-6 text-center">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                         Vidplain &mdash; Elevating education through AI

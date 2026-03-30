@@ -42,12 +42,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body
-        style={{
-          fontFamily: '"IBM Plex Sans", "IBM Plex Sans Fallback", system-ui, sans-serif',
-        }}
-        className="font-sans antialiased overflow-x-hidden"
-      >
+      <body className="font-sans antialiased overflow-x-hidden">
         <div className="noise-overlay" aria-hidden="true" />
         <SmoothScroll>{children}</SmoothScroll>
       </body>

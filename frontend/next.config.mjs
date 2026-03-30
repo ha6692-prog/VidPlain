@@ -13,7 +13,9 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['@radix-ui/react-*'],
-    turbo: false,
+  },
+  turbopack: {
+    root: process.cwd(),
   },
   webpack: (config) => {
     return config
