@@ -467,19 +467,19 @@ function AuthContent() {
                                         <div className="mt-2 h-[3px] bg-border overflow-hidden">
                                             <div
                                                 className={`h-full transition-all duration-300 ${passwordStrength === "weak"
-                                                        ? "w-1/3 bg-destructive"
-                                                        : passwordStrength === "medium"
-                                                            ? "w-2/3 bg-accent"
-                                                            : "w-full bg-green-500"
+                                                    ? "w-1/3 bg-destructive"
+                                                    : passwordStrength === "medium"
+                                                        ? "w-2/3 bg-accent"
+                                                        : "w-full bg-green-500"
                                                     }`}
                                             />
                                         </div>
                                         <span
                                             className={`block font-mono text-[10px] mt-1 ${passwordStrength === "weak"
-                                                    ? "text-destructive"
-                                                    : passwordStrength === "medium"
-                                                        ? "text-accent"
-                                                        : "text-green-500"
+                                                ? "text-destructive"
+                                                : passwordStrength === "medium"
+                                                    ? "text-accent"
+                                                    : "text-green-500"
                                                 }`}
                                         >
                                             {passwordStrength === "weak"
