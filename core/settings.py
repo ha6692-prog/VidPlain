@@ -152,6 +152,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://vidplain-xi.vercel.app",
     "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
+    "https://www.vidplainai.com",
+    "https://vidplainai.com",
     "http://localhost:3000",
 ]
 
@@ -160,7 +162,19 @@ CORS_ALLOWED_ORIGINS = [
     "https://vidplain-xi.vercel.app",
     "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-2.onrender.com",
+    "https://www.vidplainai.com",
+    "https://vidplainai.com",
     "http://localhost:3000",
+]
+
+CORS_ALLOW_METHODS = [
+    "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+]
+
+CORS_ALLOW_HEADERS = [
+    "content-type",
+    "authorization",
+    "x-csrftoken",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
