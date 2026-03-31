@@ -153,7 +153,6 @@ CSRF_TRUSTED_ORIGINS = [
     "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-backend-dhhsbfgtfkgxbbg2.centralindia-01.azurewebsites.net",
     "http://localhost:3000",
-    "https://www.vidplainai.com",
 ]
 
 
@@ -162,23 +161,12 @@ CORS_ALLOWED_ORIGINS = [
     "https://vid-plain-qvbv.vercel.app",
     "https://vidplain-2.onrender.com",
     "http://localhost:3000",
-    "https://www.vidplainai.com",
-    "https://vidplainai.com",
 ]
 
-CORS_ALLOW_ALL_HEADERS = True
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = [
-    "GET",
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-    "OPTIONS",
-]
 
-# Temporary debugging: loosen CORS completely; tighten before production.
-CORS_ALLOW_ALL_ORIGINS = True
+# Temporary testing switch. Set CORS_ALLOW_ALL_ORIGINS=True in backend .env only while debugging.
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
 
 # Secure cookie settings for HTTPS (production / cross-domain)
 CSRF_COOKIE_SECURE = True
